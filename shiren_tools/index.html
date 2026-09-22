@@ -36,6 +36,7 @@
   thead th { background: var(--header-bg); color: var(--header-text); }
   .blessed { color: var(--blessed); font-weight: 600; }
   .cursed { color: var(--cursed); font-weight: 600; }
+  .hit { background: var(--accent); color: var(--accent-text); border-radius: 2px; padding: 0 2px; font-weight: 700; }
   #empty { opacity: 0.6; padding: 20px 0; text-align: center; grid-column: 1 / -1; }
 </style>
 </head>
@@ -151,14 +152,20 @@ categories.forEach(cat => {
   filtersEl.appendChild(btn);
 });
 
-function renderItem(item) {
+// priceQuery指定時、値が一致し、かつ該当の状態/売買側がチェックされていればハイライト対象
+function cell(value, hit) {
+  return `<span class="${hit ? "hit" : ""}">${value}</span>`;
+}
+
+function renderItem(item, priceQuery, states, sides) {
   const rows = item.labels.map((label, i) => {
     const [buy, sell] = item.prices[i];
+    const isHit = (v, stateOn, sideOn) => priceQuery !== null && stateOn && sideOn && v === priceQuery;
     return `<tr>
       <th>${label}</th>
-      <td>${buy}/${sell}</td>
-      <td class="cursed">${curse(buy)}/${curse(sell)}</td>
-      <td class="blessed">${bless(buy)}/${bless(sell)}</td>
+      <td>${cell(buy, isHit(buy, states.normal, sides.buy))}/${cell(sell, isHit(sell, states.normal, sides.sell))}</td>
+      <td class="cursed">${cell(curse(buy), isHit(curse(buy), states.cursed, sides.buy))}/${cell(curse(sell), isHit(curse(sell), states.cursed, sides.sell))}</td>
+      <td class="blessed">${cell(bless(buy), isHit(bless(buy), states.blessed, sides.buy))}/${cell(bless(sell), isHit(bless(sell), states.blessed, sides.sell))}</td>
     </tr>`;
   }).join("");
   const meta = item.count ? `${item.cat} / 個数: ${item.count}` : item.cat;
@@ -201,7 +208,7 @@ function render() {
     (activeCat === "すべて" || it.cat === activeCat) &&
     (q === "" || it.name.includes(q) || (priceQuery !== null && priceMatches(it, priceQuery, states, sides)))
   );
-  resultsEl.innerHTML = matched.map(renderItem).join("");
+  resultsEl.innerHTML = matched.map(it => renderItem(it, priceQuery, states, sides)).join("");
   emptyEl.hidden = matched.length > 0;
 }
 
