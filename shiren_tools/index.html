@@ -12,6 +12,8 @@
   .filters { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
   .filters button { padding: 6px 16px; border-radius: 12px; border: 1px solid #c9b8e0; background: #f4edfa; color: #333; cursor: pointer; font-size: 1rem; }
   .filters button.active { background: #b784e0; border-color: #b784e0; color: #fff; }
+  .states { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; font-size: 0.9rem; }
+  .states label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
   #results { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; align-items: start; }
   .item { border: 1px solid #e0d3ee; border-radius: 6px; padding: 4px 6px; background: #fff; }
   .item h2 { margin: 0; font-size: 0.9rem; color: #000; }
@@ -28,6 +30,11 @@
 <body>
 <h1>シレン6 アイテム価格検索</h1>
 <input id="q" type="search" placeholder="アイテム名 または 値段で検索…">
+<div class="states">
+  <label><input type="checkbox" id="state-normal" checked> 通常</label>
+  <label><input type="checkbox" id="state-cursed" checked> 呪い</label>
+  <label><input type="checkbox" id="state-blessed" checked> 祝福</label>
+</div>
 <div class="filters" id="filters"></div>
 <div id="results"></div>
 <div id="empty" hidden>該当するアイテムがありません</div>
@@ -149,27 +156,39 @@ function renderItem(item) {
   </div>`;
 }
 
-// 値段検索: 全レベル×全状態(通常/呪い/祝福)×買値/売値のいずれかに一致するか
-function priceMatches(item, price) {
-  return item.prices.some(([buy, sell]) =>
-    [buy, sell, curse(buy), curse(sell), bless(buy), bless(sell)].includes(price)
-  );
+// 値段検索: チェックされた状態(通常/呪い/祝福)の買値/売値のいずれかに一致するか
+function priceMatches(item, price, states) {
+  return item.prices.some(([buy, sell]) => {
+    const candidates = [];
+    if (states.normal) candidates.push(buy, sell);
+    if (states.cursed) candidates.push(curse(buy), curse(sell));
+    if (states.blessed) candidates.push(bless(buy), bless(sell));
+    return candidates.includes(price);
+  });
 }
 
 function render() {
   const q = document.getElementById("q").value.trim();
   const priceQuery = /^\d+$/.test(q) ? Number(q) : null;
+  const states = {
+    normal: document.getElementById("state-normal").checked,
+    cursed: document.getElementById("state-cursed").checked,
+    blessed: document.getElementById("state-blessed").checked,
+  };
   const resultsEl = document.getElementById("results");
   const emptyEl = document.getElementById("empty");
   const matched = items.filter(it =>
     (activeCat === "すべて" || it.cat === activeCat) &&
-    (q === "" || it.name.includes(q) || (priceQuery !== null && priceMatches(it, priceQuery)))
+    (q === "" || it.name.includes(q) || (priceQuery !== null && priceMatches(it, priceQuery, states)))
   );
   resultsEl.innerHTML = matched.map(renderItem).join("");
   emptyEl.hidden = matched.length > 0;
 }
 
 document.getElementById("q").addEventListener("input", render);
+["state-normal","state-cursed","state-blessed"].forEach(id =>
+  document.getElementById(id).addEventListener("change", render)
+);
 render();
 </script>
 </body>
